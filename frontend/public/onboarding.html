@@ -1,0 +1,454 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+<meta name="theme-color" content="#101418" />
+<title>カグエラ — はじめに</title>
+<style>
+  :root {
+    --accent: #4ea1ff;
+    --bg: #0d1116;
+    --panel: rgba(20, 24, 30, 0.95);
+    --text: #f5f7fa;
+    --muted: #a7b0bd;
+    --ok: #44dd88;
+    --ng: #ff3b55;
+    --border: rgba(255,255,255,0.12);
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body {
+    min-height: 100%;
+    background: var(--bg);
+    color: var(--text);
+    font-family: -apple-system, BlinkMacSystemFont, "Hiragino Sans", "Yu Gothic", sans-serif;
+    -webkit-tap-highlight-color: transparent;
+  }
+  #app {
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 24px 20px 48px;
+    background: radial-gradient(circle at 50% 20%, #1d2733, #0a0d11 70%);
+  }
+
+  /* ===== 進捗バー ===== */
+  #progress-wrap { width: 100%; max-width: 420px; margin-bottom: 20px; opacity: 0; transition: opacity .3s; }
+  #progress-wrap.visible { opacity: 1; }
+  #progress-label { font-size: 12px; color: var(--muted); margin-bottom: 6px; text-align: right; }
+  #progress-bar-bg { height: 4px; background: rgba(255,255,255,0.1); border-radius: 999px; overflow: hidden; }
+  #progress-bar { height: 100%; background: var(--accent); border-radius: 999px; transition: width .4s cubic-bezier(.4,0,.2,1); }
+
+  /* ===== カード ===== */
+  .card {
+    width: 100%; max-width: 420px;
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 20px;
+    padding: 28px 24px 24px;
+    display: none; flex-direction: column; gap: 20px;
+    animation: fadeIn .35s ease;
+  }
+  .card.active { display: flex; }
+  @keyframes fadeIn {
+    from { opacity: 0; transform: translateY(12px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+  .card-icon { font-size: 48px; text-align: center; line-height: 1; }
+  .card-title { font-size: 20px; font-weight: 700; text-align: center; }
+  .card-desc  { font-size: 14px; color: var(--muted); text-align: center; line-height: 1.7; }
+
+  /* ===== QRステップ ===== */
+  .qr-grid { display: flex; gap: 16px; justify-content: center; flex-wrap: wrap; }
+  .qr-box {
+    display: flex; flex-direction: column; align-items: center; gap: 8px;
+    padding: 16px 18px 12px;
+    background: rgba(255,255,255,0.04);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+  }
+  .qr-box img { border-radius: 8px; display: block; }
+  .qr-box .qr-os { font-size: 13px; font-weight: 700; color: var(--text); }
+  .qr-box .qr-hint { font-size: 11px; color: var(--muted); text-align: center; line-height: 1.5; }
+  .qr-note {
+    font-size: 12px; color: var(--muted); text-align: center; line-height: 1.6;
+    padding: 10px 14px;
+    background: rgba(78,161,255,0.07);
+    border: 1px solid rgba(78,161,255,0.2);
+    border-radius: 10px;
+  }
+
+  /* ===== フォーム ===== */
+  .field { display: flex; flex-direction: column; gap: 6px; }
+  .field label { font-size: 12px; color: var(--muted); font-weight: 600; letter-spacing: .04em; }
+  .input {
+    height: 48px; padding: 0 14px;
+    background: rgba(255,255,255,0.05);
+    border: 1px solid var(--border);
+    border-radius: 10px; color: var(--text); font-size: 15px;
+    outline: none; transition: border-color .2s; width: 100%;
+  }
+  .input:focus { border-color: var(--accent); }
+  .input::placeholder { color: #555e6b; }
+  select.input { cursor: pointer; }
+  select.input option { background: #1a2030; }
+  .field-row { display: flex; gap: 10px; }
+  .field-row .field { flex: 1; }
+  .field-error { font-size: 11px; color: var(--ng); min-height: 14px; }
+
+  .radio-group { display: flex; gap: 8px; flex-wrap: wrap; }
+  .radio-label {
+    flex: 1; min-width: 80px;
+    display: flex; align-items: center; justify-content: center; gap: 6px;
+    padding: 10px 12px;
+    background: rgba(255,255,255,0.05);
+    border: 1px solid var(--border);
+    border-radius: 10px; cursor: pointer; font-size: 14px;
+    transition: border-color .15s, background .15s; user-select: none;
+  }
+  .radio-label input[type="radio"] { display: none; }
+  .radio-label.checked { border-color: var(--accent); background: rgba(78,161,255,0.12); color: var(--accent); font-weight: 700; }
+
+  .upload-area {
+    height: 100px; border: 2px dashed var(--border); border-radius: 10px;
+    display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px;
+    cursor: pointer; transition: border-color .2s, background .2s;
+    font-size: 13px; color: var(--muted);
+  }
+  .upload-area:hover, .upload-area.has-file { border-color: var(--accent); background: rgba(78,161,255,0.06); }
+  .upload-area .upload-icon { font-size: 28px; }
+  .upload-area input { display: none; }
+  .upload-area.has-file { color: var(--ok); }
+
+  .mood-grid { display: flex; gap: 12px; }
+  .mood-card {
+    flex: 1; padding: 20px 12px;
+    background: rgba(255,255,255,0.04);
+    border: 2px solid var(--border); border-radius: 14px;
+    display: flex; flex-direction: column; align-items: center; gap: 10px;
+    cursor: pointer; transition: border-color .2s, background .2s; user-select: none;
+  }
+  .mood-card .mood-icon { font-size: 40px; }
+  .mood-card .mood-name { font-size: 15px; font-weight: 700; }
+  .mood-card .mood-check {
+    width: 22px; height: 22px; border-radius: 50%;
+    border: 2px solid var(--border);
+    display: flex; align-items: center; justify-content: center; font-size: 13px;
+    transition: background .15s, border-color .15s;
+  }
+  .mood-card.selected { border-color: var(--accent); background: rgba(78,161,255,0.1); }
+  .mood-card.selected .mood-check { background: var(--accent); border-color: var(--accent); color: #fff; }
+
+  .summary-list { background: rgba(255,255,255,0.04); border-radius: 12px; overflow: hidden; }
+  .summary-row {
+    display: flex; justify-content: space-between; align-items: center;
+    padding: 11px 16px; font-size: 13px; border-bottom: 1px solid var(--border);
+  }
+  .summary-row:last-child { border-bottom: none; }
+  .summary-row .s-key { color: var(--muted); }
+  .summary-row .s-val { font-weight: 600; max-width: 60%; text-align: right; word-break: break-all; }
+
+  .complete-icon {
+    width: 64px; height: 64px; margin: 0 auto; border-radius: 50%;
+    background: rgba(68,221,136,0.15); border: 2px solid var(--ok);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 28px; color: var(--ok);
+  }
+
+  /* ===== ボタン ===== */
+  .btn-primary {
+    width: 100%; height: 52px; font-size: 16px; font-weight: 700; color: #fff;
+    background: var(--accent); border: none; border-radius: 14px; cursor: pointer;
+    box-shadow: 0 6px 20px rgba(78,161,255,0.35);
+    transition: opacity .15s, transform .1s;
+  }
+  .btn-primary:active { opacity: .85; transform: scale(.98); }
+  .btn-secondary {
+    width: 100%; height: 44px; font-size: 14px;
+    color: var(--muted); background: transparent;
+    border: 1px solid var(--border); border-radius: 12px;
+    cursor: pointer; transition: border-color .15s, color .15s;
+  }
+  .btn-secondary:hover { border-color: var(--muted); color: var(--text); }
+</style>
+</head>
+<body>
+<div id="app">
+
+  <div id="progress-wrap">
+    <div id="progress-label">ステップ 1 / 4</div>
+    <div id="progress-bar-bg"><div id="progress-bar" style="width:25%"></div></div>
+  </div>
+
+  <!-- Step QR: デスクトップのみ -->
+  <div class="card" id="step-qr">
+    <div class="card-icon">📱</div>
+    <div class="card-title">スマホで体験する</div>
+    <div class="card-desc">カグエラはスマホのカメラを使ったAR機能を搭載しています。<br>以下のQRコードをスキャンして開いてください。</div>
+    <div class="qr-grid">
+      <div class="qr-box">
+        <div class="qr-os">🤖 Android</div>
+        <img id="qr-android" width="160" height="160" alt="Android用QR">
+        <div class="qr-hint">Chrome でスキャン<br>WebAR が起動します</div>
+      </div>
+      <div class="qr-box">
+        <div class="qr-os">🍎 iPhone</div>
+        <img id="qr-ios" width="160" height="160" alt="iPhone用QR">
+        <div class="qr-hint">Safari でスキャン<br>AR Quick Look で確認</div>
+      </div>
+    </div>
+    <div class="qr-note">
+      スキャン後、このページ（設定画面）が開きます。<br>
+      設定を完了するとARが起動します。
+    </div>
+  </div>
+
+  <!-- Step Welcome -->
+  <div class="card" id="step-welcome">
+    <div class="card-icon" style="font-size:64px">🛋️</div>
+    <div class="card-title" style="font-size:22px">カグエラへようこそ</div>
+    <div class="card-desc">
+      間取り画像をアップロードすると、AIがあなたの部屋に<br>
+      ぴったりの家具・家電を提案します。<br>
+      ARで実際の空間に置いて確認できます。
+    </div>
+    <button class="btn-primary" id="btn-welcome">はじめる →</button>
+  </div>
+
+  <!-- Step 1/4: アカウント -->
+  <div class="card" id="step-account">
+    <div class="card-title">アカウント作成</div>
+    <div class="card-desc">ニックネームとメールアドレスを入力してください</div>
+    <div class="field">
+      <label>ニックネーム</label>
+      <input class="input" type="text" id="f-name" placeholder="例: 田中さん" autocomplete="nickname" />
+      <div class="field-error" id="err-name"></div>
+    </div>
+    <div class="field">
+      <label>メールアドレス</label>
+      <input class="input" type="email" id="f-email" placeholder="example@email.com" autocomplete="email" inputmode="email" />
+      <div class="field-error" id="err-email"></div>
+    </div>
+    <div class="field">
+      <label>パスワード（8文字以上）</label>
+      <input class="input" type="password" id="f-pass" placeholder="••••••••" autocomplete="new-password" />
+      <div class="field-error" id="err-pass"></div>
+    </div>
+    <button class="btn-primary" id="btn-account">次へ →</button>
+    <button class="btn-secondary" id="back-account">← 戻る</button>
+  </div>
+
+  <!-- Step 2/4: プロフィール -->
+  <div class="card" id="step-profile">
+    <div class="card-title">プロフィール登録</div>
+    <div class="card-desc">おすすめ家具の提案に使用します</div>
+    <div class="field-row">
+      <div class="field">
+        <label>年齢</label>
+        <input class="input" type="number" id="f-age" placeholder="30" min="10" max="99" inputmode="numeric" />
+        <div class="field-error" id="err-age"></div>
+      </div>
+      <div class="field">
+        <label>職業</label>
+        <select class="input" id="f-job">
+          <option value="">選択してください</option>
+          <option>会社員</option>
+          <option>自営業・フリーランス</option>
+          <option>学生</option>
+          <option>主婦・主夫</option>
+          <option>その他</option>
+        </select>
+        <div class="field-error" id="err-job"></div>
+      </div>
+    </div>
+    <div class="field">
+      <label>性別</label>
+      <div class="radio-group" id="gender-group">
+        <label class="radio-label"><input type="radio" name="gender" value="男性">男性</label>
+        <label class="radio-label"><input type="radio" name="gender" value="女性">女性</label>
+        <label class="radio-label"><input type="radio" name="gender" value="回答しない">回答しない</label>
+      </div>
+      <div class="field-error" id="err-gender"></div>
+    </div>
+    <div class="field">
+      <label>間取り画像（任意）</label>
+      <div class="upload-area" id="upload-area" onclick="document.getElementById('f-image').click()">
+        <div class="upload-icon">🏠</div>
+        <span id="upload-label">タップして画像を選択 / カメラで撮影</span>
+        <input type="file" id="f-image" accept="image/*" capture="environment" />
+      </div>
+    </div>
+    <button class="btn-primary" id="btn-profile">次へ →</button>
+    <button class="btn-secondary" id="back-profile">← 戻る</button>
+  </div>
+
+  <!-- Step 3/4: 雰囲気 -->
+  <div class="card" id="step-mood">
+    <div class="card-title">好きな雰囲気は？</div>
+    <div class="card-desc">部屋の雰囲気に合った家具をご提案します</div>
+    <div class="mood-grid">
+      <div class="mood-card" data-mood="明るい">
+        <div class="mood-icon">☀️</div>
+        <div class="mood-name">明るい</div>
+        <div class="mood-check">✓</div>
+      </div>
+      <div class="mood-card" data-mood="落ち着いた">
+        <div class="mood-icon">🌙</div>
+        <div class="mood-name">落ち着いた</div>
+        <div class="mood-check">✓</div>
+      </div>
+    </div>
+    <div class="field-error" id="err-mood" style="text-align:center"></div>
+    <button class="btn-primary" id="btn-mood">次へ →</button>
+    <button class="btn-secondary" id="back-mood">← 戻る</button>
+  </div>
+
+  <!-- Step 4/4: 完了 -->
+  <div class="card" id="step-complete">
+    <div class="complete-icon">✓</div>
+    <div class="card-title">設定完了！</div>
+    <div class="card-desc">入力内容を確認してARを開始してください</div>
+    <div class="summary-list" id="summary-list"></div>
+    <button class="btn-primary" id="btn-start-ar">🚀 AR を開始する</button>
+  </div>
+
+</div>
+
+<script>
+const data = { name:'', email:'', pass:'', age:'', job:'', gender:'', image:'', mood:'' };
+
+const STEPS = ['qr', 'welcome', 'account', 'profile', 'mood', 'complete'];
+const PROGRESS_STEPS = ['account', 'profile', 'mood', 'complete'];
+
+const ua = navigator.userAgent;
+const isIOS     = /iPhone|iPad|iPod/i.test(ua);
+const isAndroid = /Android/i.test(ua);
+const isMobile  = isIOS || isAndroid;
+
+// デスクトップ → QRから開始 / モバイル → welcomeから開始
+let current = isMobile ? STEPS.indexOf('welcome') : STEPS.indexOf('qr');
+
+// QRコード生成（デスクトップのみ）
+if (!isMobile) {
+  const toQrSrc = (url) =>
+    'https://api.qrserver.com/v1/create-qr-code/?size=160x160' +
+    '&bgcolor=141e2a&color=f5f7fa&margin=6' +
+    '&data=' + encodeURIComponent(url);
+  const thisUrl = location.origin + location.pathname + location.search;
+  document.getElementById('qr-android').src = toQrSrc(thisUrl);
+  document.getElementById('qr-ios').src     = toQrSrc(thisUrl);
+}
+
+const progressWrap  = document.getElementById('progress-wrap');
+const progressBar   = document.getElementById('progress-bar');
+const progressLabel = document.getElementById('progress-label');
+
+function goTo(idx) {
+  document.getElementById('step-' + STEPS[current]).classList.remove('active');
+  current = idx;
+  const stepId = STEPS[current];
+  document.getElementById('step-' + stepId).classList.add('active');
+
+  const progIdx = PROGRESS_STEPS.indexOf(stepId);
+  if (progIdx >= 0) {
+    progressWrap.classList.add('visible');
+    const step = progIdx + 1;
+    const total = PROGRESS_STEPS.length;
+    progressLabel.textContent = `ステップ ${step} / ${total}`;
+    progressBar.style.width = (step / total * 100) + '%';
+  } else {
+    progressWrap.classList.remove('visible');
+  }
+  window.scrollTo(0, 0);
+}
+
+// 初期ステップを表示
+document.getElementById('step-' + STEPS[current]).classList.add('active');
+
+// ===== バリデーション =====
+function setErr(id, msg) { document.getElementById(id).textContent = msg; return !!msg; }
+function clearErrs(...ids) { ids.forEach(id => setErr(id, '')); }
+
+function validateAccount() {
+  clearErrs('err-name','err-email','err-pass');
+  let err = false;
+  if (!data.name.trim()) err = setErr('err-name', 'ニックネームを入力してください') || err;
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(data.email)) err = setErr('err-email', '正しいメールアドレスを入力してください') || err;
+  if (data.pass.length < 8) err = setErr('err-pass', '8文字以上で入力してください') || err;
+  return !err;
+}
+function validateProfile() {
+  clearErrs('err-age','err-job','err-gender');
+  let err = false;
+  const age = parseInt(data.age);
+  if (!data.age || age < 10 || age > 99) err = setErr('err-age', '年齢を入力してください') || err;
+  if (!data.job) err = setErr('err-job', '職業を選択してください') || err;
+  if (!data.gender) err = setErr('err-gender', '性別を選択してください') || err;
+  return !err;
+}
+function validateMood() {
+  clearErrs('err-mood');
+  if (!data.mood) { setErr('err-mood', '雰囲気を選択してください'); return false; }
+  return true;
+}
+
+// ===== バインド =====
+document.getElementById('f-name').addEventListener('input',  e => data.name  = e.target.value);
+document.getElementById('f-email').addEventListener('input', e => data.email = e.target.value);
+document.getElementById('f-pass').addEventListener('input',  e => data.pass  = e.target.value);
+document.getElementById('f-age').addEventListener('input',   e => data.age   = e.target.value);
+document.getElementById('f-job').addEventListener('change',  e => data.job   = e.target.value);
+
+document.getElementById('gender-group').addEventListener('change', e => {
+  data.gender = e.target.value;
+  document.querySelectorAll('#gender-group .radio-label').forEach(l =>
+    l.classList.toggle('checked', l.querySelector('input').value === data.gender)
+  );
+});
+
+document.getElementById('f-image').addEventListener('change', e => {
+  const file = e.target.files[0];
+  if (!file) return;
+  data.image = file.name;
+  document.getElementById('upload-area').classList.add('has-file');
+  document.getElementById('upload-label').textContent = '✓ ' + file.name;
+});
+
+document.querySelectorAll('.mood-card').forEach(card => {
+  card.addEventListener('click', () => {
+    data.mood = card.dataset.mood;
+    document.querySelectorAll('.mood-card').forEach(c => c.classList.remove('selected'));
+    card.classList.add('selected');
+    clearErrs('err-mood');
+  });
+});
+
+// ===== ナビゲーション =====
+document.getElementById('btn-welcome').addEventListener('click', () => goTo(STEPS.indexOf('account')));
+document.getElementById('btn-account').addEventListener('click', () => { if (validateAccount()) goTo(STEPS.indexOf('profile')); });
+document.getElementById('back-account').addEventListener('click', () => goTo(STEPS.indexOf('welcome')));
+document.getElementById('btn-profile').addEventListener('click', () => { if (validateProfile()) goTo(STEPS.indexOf('mood')); });
+document.getElementById('back-profile').addEventListener('click', () => goTo(STEPS.indexOf('account')));
+document.getElementById('btn-mood').addEventListener('click', () => { if (validateMood()) { buildSummary(); goTo(STEPS.indexOf('complete')); } });
+document.getElementById('back-mood').addEventListener('click', () => goTo(STEPS.indexOf('profile')));
+
+function buildSummary() {
+  const rows = [
+    ['ニックネーム', data.name], ['メールアドレス', data.email],
+    ['年齢', data.age + ' 歳'], ['職業', data.job], ['性別', data.gender],
+    ['雰囲気', data.mood], ['間取り画像', data.image || '未設定'],
+  ];
+  document.getElementById('summary-list').innerHTML = rows.map(([k,v]) =>
+    `<div class="summary-row"><span class="s-key">${k}</span><span class="s-val">${v}</span></div>`
+  ).join('');
+}
+
+// ボタンを押した時のみARへ遷移
+document.getElementById('btn-start-ar').addEventListener('click', () => {
+  location.href = (isIOS ? '/ios.html' : '/ar.html') + location.search;
+});
+</script>
+</body>
+</html>

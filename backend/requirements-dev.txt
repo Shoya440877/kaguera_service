@@ -1,0 +1,9 @@
+# Dev / test dependencies. Install with:  pip install -r requirements-dev.txt
+# Kept separate from requirements.txt so the Docker image ships runtime deps only.
+
+-r requirements.txt
+
+pytest>=8.0,<9.0
+httpx>=0.27,<1.0
+ruff>=0.6,<1.0
+mypy>=1.11,<2.0

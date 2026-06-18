@@ -1,0 +1,236 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+<meta name="theme-color" content="#101418" />
+<title>WebAR 家具配置 — iPhone 用 AR Quick Look</title>
+<style>
+  :root {
+    --accent: #4ea1ff;
+    --bg: #0d1116;
+    --panel: rgba(20, 24, 30, 0.9);
+    --text: #f5f7fa;
+    --muted: #a7b0bd;
+    --ok: #44dd88;
+  }
+  * { box-sizing: border-box; }
+  html, body {
+    margin: 0;
+    padding: 0;
+    min-height: 100%;
+    background: var(--bg);
+    color: var(--text);
+    font-family: -apple-system, BlinkMacSystemFont, "Hiragino Sans", sans-serif;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  header {
+    padding: 48px 24px 16px;
+    text-align: center;
+    background: radial-gradient(circle at 50% 0%, #1d2733, transparent 70%);
+  }
+  header h1 { font-size: 22px; margin: 0 0 8px; }
+  header p  { font-size: 13px; color: var(--muted); margin: 0; line-height: 1.6; }
+
+  .notice {
+    margin: 16px 20px;
+    padding: 12px 16px;
+    background: rgba(78,161,255,0.1);
+    border: 1px solid rgba(78,161,255,0.3);
+    border-radius: 10px;
+    font-size: 12.5px;
+    color: var(--muted);
+    line-height: 1.6;
+  }
+  .notice strong { color: var(--accent); }
+
+  .furniture-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: 16px;
+    padding: 8px 20px 40px;
+    max-width: 800px;
+    margin: 0 auto;
+  }
+
+  .furniture-card {
+    background: var(--panel);
+    border: 1px solid rgba(255,255,255,0.1);
+    border-radius: 16px;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+  }
+  .furniture-card.featured {
+    border-color: rgba(78,161,255,0.5);
+    box-shadow: 0 10px 24px rgba(78,161,255,0.15);
+  }
+
+  .card-preview {
+    background: rgba(255,255,255,0.04);
+    height: 160px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 64px;
+  }
+
+  .card-body {
+    padding: 14px 16px 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    flex: 1;
+  }
+
+  .card-name {
+    font-size: 16px;
+    font-weight: 700;
+    margin: 0;
+  }
+
+  .card-desc {
+    font-size: 12px;
+    color: var(--muted);
+    margin: 0;
+    line-height: 1.5;
+  }
+
+  .ar-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    margin-top: 10px;
+    padding: 12px 0;
+    font-size: 15px;
+    font-weight: 700;
+    color: #fff;
+    background: var(--accent);
+    border: none;
+    border-radius: 10px;
+    cursor: pointer;
+    text-decoration: none;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  .ar-btn svg {
+    width: 20px;
+    height: 20px;
+    flex-shrink: 0;
+  }
+
+  footer {
+    text-align: center;
+    padding: 24px 20px 40px;
+    font-size: 12px;
+    color: var(--muted);
+    border-top: 1px solid rgba(255,255,255,0.07);
+  }
+  footer a { color: var(--accent); text-decoration: none; }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>🍎 iPhone 用 AR 家具配置</h1>
+  <p>各家具の「AR で見る」をタップすると<br>カメラを使って部屋に配置できます</p>
+</header>
+
+<div class="notice">
+  <strong>AR Quick Look</strong> を使用します。ボタンをタップすると Safari が<br>
+  3Dモデルをカメラ映像に重ねて表示します。<br>
+  ※ iOS 12 以上 / Safari 必須
+</div>
+
+<div class="furniture-grid">
+
+  <!-- 椅子 -->
+  <div class="furniture-card" data-model="chair">
+    <div class="card-preview">🪑</div>
+    <div class="card-body">
+      <p class="card-name">椅子</p>
+      <p class="card-desc">幅45 × 奥行40 × 高さ87 cm（目安）<br>座面高 45 cm</p>
+      <a class="ar-btn" href="models/chair.usdz" rel="ar">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/>
+        </svg>
+        AR で見る
+      </a>
+    </div>
+  </div>
+
+  <!-- 机 -->
+  <div class="furniture-card" data-model="desk">
+    <div class="card-preview">🪵</div>
+    <div class="card-body">
+      <p class="card-name">机</p>
+      <p class="card-desc">幅90 × 奥行60 × 高さ72 cm（目安）<br>天板厚 4 cm</p>
+      <a class="ar-btn" href="models/desk.usdz" rel="ar">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/>
+        </svg>
+        AR で見る
+      </a>
+    </div>
+  </div>
+
+  <!-- ランプ -->
+  <div class="furniture-card" data-model="lamp">
+    <div class="card-preview">🪔</div>
+    <div class="card-body">
+      <p class="card-name">フロアランプ</p>
+      <p class="card-desc">直径30 × 高さ104 cm（目安）<br>ベース径 36 cm</p>
+      <a class="ar-btn" href="models/lamp.usdz" rel="ar">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/>
+        </svg>
+        AR で見る
+      </a>
+    </div>
+  </div>
+
+</div>
+
+<footer>
+  Android をお使いの方は <a href="./">WebAR 版</a> をご利用ください（Chrome 推奨）
+</footer>
+
+<script>
+  const params = new URLSearchParams(location.search);
+  const preset = params.get('preset');
+  const name = params.get('name');
+  const w = params.get('w');
+  const d = params.get('d');
+  const h = params.get('h');
+
+  if (name) {
+    document.querySelector('header h1').textContent = `${name} をARで確認`;
+    document.querySelector('header p').innerHTML = 'AR Quick Look で商品イメージを実空間に重ねて確認できます';
+  }
+
+  if (preset && ['chair', 'desk', 'lamp'].includes(preset)) {
+    const card = document.querySelector(`.furniture-card[data-model="${preset}"]`);
+    if (card) {
+      card.classList.add('featured');
+      const desc = card.querySelector('.card-desc');
+      const button = card.querySelector('.ar-btn');
+      if (desc && w && d && h) {
+        desc.innerHTML = `幅${w} × 奥行${d} × 高さ${h} cm（商品サイズ）`;
+      }
+      if (button && name) {
+        button.innerHTML = button.innerHTML.replace('AR で見る', `${name} をARで見る`);
+      }
+    }
+  }
+
+  // iOS 以外でアクセスしてきた場合は注意文言を補足
+  if (!/iPhone|iPad|iPod/i.test(navigator.userAgent)) {
+    document.querySelector('.notice').innerHTML +=
+      '<br><strong style="color:#ffd97a">⚠ このページは iPhone / iPad 向けです。</strong> Android は <a href="/" style="color:var(--accent)">WebAR 版</a> をどうぞ。';
+  }
+</script>
+
+</body>
+</html>

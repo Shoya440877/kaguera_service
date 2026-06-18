@@ -1,0 +1,1242 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+<meta name="theme-color" content="#101418" />
+<title>WebAR 家具配置 (衝突判定付き)</title>
+<style>
+  :root {
+    --accent: #4ea1ff;
+    --bg: #0d1116;
+    --panel: rgba(20, 24, 30, 0.88);
+    --text: #f5f7fa;
+    --muted: #a7b0bd;
+    --ok: #44dd88;
+    --ng: #ff3b55;
+  }
+  * { box-sizing: border-box; }
+  html, body {
+    margin: 0;
+    padding: 0;
+    height: 100%;
+    overflow: hidden;
+    background: var(--bg);
+    color: var(--text);
+    font-family: -apple-system, BlinkMacSystemFont, "Hiragino Sans", "Yu Gothic", sans-serif;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  /* 起動画面 */
+  #start-screen {
+    position: fixed;
+    inset: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 24px;
+    text-align: center;
+    background: radial-gradient(circle at 50% 30%, #1d2733, #0a0d11);
+    z-index: 10;
+  }
+  #start-screen h1 {
+    font-size: 26px;
+    margin: 0 0 10px;
+  }
+  #start-screen p {
+    color: var(--muted);
+    font-size: 14px;
+    line-height: 1.7;
+    margin: 0 0 24px;
+    max-width: 360px;
+  }
+  #start-btn {
+    min-height: 56px;
+    padding: 0 32px;
+    font-size: 17px;
+    font-weight: 700;
+    color: #fff;
+    background: var(--accent);
+    border: none;
+    border-radius: 28px;
+    cursor: pointer;
+    box-shadow: 0 6px 22px rgba(78, 161, 255, 0.4);
+  }
+  #start-btn:disabled { background: #555; box-shadow: none; }
+  #error-msg {
+    margin-top: 18px;
+    padding: 12px 16px;
+    background: rgba(255, 80, 80, 0.15);
+    border: 1px solid rgba(255, 80, 80, 0.4);
+    border-radius: 8px;
+    color: #ffb4b4;
+    font-size: 13px;
+    max-width: 360px;
+    display: none;
+    white-space: pre-wrap;
+  }
+
+  /* QRコードセクション (デスクトップ表示用) */
+  #qr-section {
+    display: none;
+    flex-direction: row;
+    gap: 24px;
+    margin-top: 32px;
+    justify-content: center;
+    flex-wrap: wrap;
+  }
+  #qr-section.visible { display: flex; }
+  .qr-card {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 10px;
+    padding: 18px 20px 14px;
+    background: rgba(255,255,255,0.05);
+    border: 1px solid rgba(255,255,255,0.12);
+    border-radius: 16px;
+  }
+  .qr-card .qr-label {
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--text);
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .qr-card .qr-sub {
+    font-size: 11px;
+    color: var(--muted);
+    text-align: center;
+    line-height: 1.5;
+  }
+  .qr-card canvas, .qr-card img {
+    border-radius: 8px;
+    display: block;
+  }
+
+  /* iOSバナー (iPhone でアクセスしたとき) */
+  #ios-banner {
+    display: none;
+    margin-top: 20px;
+    padding: 14px 18px;
+    background: rgba(255,200,80,0.12);
+    border: 1px solid rgba(255,200,80,0.35);
+    border-radius: 10px;
+    color: #ffd97a;
+    font-size: 13px;
+    max-width: 340px;
+    line-height: 1.6;
+    text-align: center;
+  }
+  #ios-banner a {
+    color: var(--accent);
+    text-decoration: underline;
+    font-weight: 700;
+  }
+
+  /* ARオーバーレイ */
+  #ar-overlay {
+    position: fixed;
+    inset: 0;
+    pointer-events: none;
+    display: none;
+    flex-direction: column;
+    justify-content: space-between;
+  }
+  #ar-overlay.visible { display: flex; }
+
+  #guide {
+    margin: 16px 16px 0;
+    padding: 10px 14px;
+    background: var(--panel);
+    border-radius: 10px;
+    font-size: 12.5px;
+    text-align: center;
+    align-self: center;
+    line-height: 1.5;
+  }
+
+  #status-pill {
+    margin: 10px auto 0;
+    padding: 8px 18px;
+    border-radius: 999px;
+    font-size: 13px;
+    font-weight: 700;
+    background: rgba(20, 24, 30, 0.85);
+    color: var(--muted);
+    border: 1.5px solid transparent;
+    transition: color 0.15s, border-color 0.15s;
+  }
+  #status-pill.ok { color: var(--ok); border-color: var(--ok); }
+  #status-pill.ng { color: var(--ng); border-color: var(--ng); }
+
+  #controls {
+    margin: 16px;
+    padding: 12px;
+    background: var(--panel);
+    border-radius: 14px;
+    display: flex;
+    gap: 6px;
+    justify-content: flex-start;
+    flex-wrap: wrap;
+    pointer-events: auto;
+    max-height: 180px;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+  .btn {
+    min-width: 56px;
+    min-height: 40px;
+    padding: 0 10px;
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--text);
+    background: rgba(255, 255, 255, 0.08);
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    border-radius: 10px;
+    cursor: pointer;
+  }
+  .btn.active {
+    background: var(--accent);
+    border-color: var(--accent);
+    color: #fff;
+  }
+  .btn.clear {
+    background: rgba(255, 90, 90, 0.15);
+    border-color: rgba(255, 90, 90, 0.5);
+    color: #ffb4b4;
+  }
+
+  /* サイズ入力パネル */
+  #size-panel {
+    margin: 0 16px 8px;
+    padding: 10px 12px;
+    background: var(--panel);
+    border-radius: 12px;
+    pointer-events: auto;
+  }
+  #size-panel .title {
+    font-size: 11px;
+    color: var(--muted);
+    margin-bottom: 6px;
+    text-align: center;
+    letter-spacing: 0.05em;
+  }
+  .size-row {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 8px;
+  }
+  .size-field {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    background: rgba(255,255,255,0.06);
+    border: 1px solid rgba(255,255,255,0.12);
+    border-radius: 8px;
+    padding: 0 8px;
+    height: 44px;
+    min-width: 0;
+  }
+  .size-field span {
+    font-size: 11px;
+    color: var(--muted);
+    flex-shrink: 0;
+  }
+  .size-field input {
+    flex: 1;
+    min-width: 0;
+    width: 100%;
+    height: 100%;
+    background: transparent;
+    border: none;
+    color: var(--text);
+    font-size: 15px;
+    text-align: right;
+    padding: 0;
+    -moz-appearance: textfield;
+    outline: none;
+  }
+  .size-field input::-webkit-outer-spin-button,
+  .size-field input::-webkit-inner-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+  }
+  .size-field .unit {
+    font-size: 11px;
+    color: var(--muted);
+    flex-shrink: 0;
+  }
+  #size-reset {
+    width: 100%;
+    min-height: 36px;
+    font-size: 12px;
+    color: var(--muted);
+    background: rgba(255,255,255,0.04);
+    border: 1px solid rgba(255,255,255,0.12);
+    border-radius: 8px;
+    cursor: pointer;
+  }
+
+  /* URL取得パネル */
+  #fetch-panel {
+    margin: 0 16px 8px;
+    padding: 10px 12px;
+    background: var(--panel);
+    border-radius: 12px;
+    pointer-events: auto;
+  }
+  #fetch-panel .title {
+    font-size: 11px;
+    color: var(--muted);
+    margin-bottom: 6px;
+    text-align: center;
+    letter-spacing: 0.05em;
+  }
+  .fetch-row {
+    display: flex;
+    gap: 6px;
+  }
+  #fetch-url {
+    flex: 1;
+    min-width: 0;
+    height: 44px;
+    padding: 0 10px;
+    background: rgba(255,255,255,0.06);
+    border: 1px solid rgba(255,255,255,0.12);
+    border-radius: 8px;
+    color: var(--text);
+    font-size: 13px;
+    outline: none;
+  }
+  #fetch-url::placeholder { color: #6c7480; }
+  #fetch-btn {
+    min-width: 64px;
+    height: 44px;
+    padding: 0 12px;
+    font-size: 13px;
+    font-weight: 700;
+    color: #fff;
+    background: var(--accent);
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+  }
+  #fetch-btn:disabled { background: #555; }
+  #fetch-status {
+    margin-top: 6px;
+    font-size: 11px;
+    color: var(--muted);
+    min-height: 14px;
+    text-align: center;
+    line-height: 1.4;
+    word-break: break-all;
+    white-space: pre-line;
+  }
+  #fetch-status.success { color: var(--ok); }
+  #fetch-status.error { color: var(--ng); }
+</style>
+</head>
+<body>
+
+<div id="start-screen">
+  <h1>WebAR 家具配置デモ</h1>
+  <p>
+    床を映して家具を配置できます。<br>
+    壁や床の障害物、置いた家具と<strong>衝突する場所には配置できません</strong>（赤く表示されます）。
+  </p>
+  <button id="start-btn">ARを開始</button>
+  <div id="error-msg"></div>
+
+  <!-- iOSバナー: iPhone/iPadでアクセスした場合に表示 -->
+  <div id="ios-banner">
+    📱 iOS Safari は WebXR 非対応です。<br>
+    AR Quick Look で家具を試し置きできます👇<br>
+    <a href="/ios.html">iPhone 用 AR ページを開く →</a>
+  </div>
+
+  <!-- QRセクション: デスクトップでアクセスした場合に表示 -->
+  <div id="qr-section">
+    <div class="qr-card">
+      <div class="qr-label">🤖 Android</div>
+      <img id="qr-android" width="180" height="180" alt="Android用QRコード">
+      <div class="qr-sub">Chrome でスキャン<br>設定後に WebAR が起動します</div>
+    </div>
+    <div class="qr-card">
+      <div class="qr-label">🍎 iPhone</div>
+      <img id="qr-ios" width="180" height="180" alt="iPhone用QRコード">
+      <div class="qr-sub">Safari でスキャン<br>設定後に AR Quick Look で確認</div>
+    </div>
+  </div>
+</div>
+
+<div id="ar-overlay">
+  <div>
+    <div id="guide">床を映してリングが<span style="color:var(--ok)">緑</span>のときタップで配置 / <span style="color:var(--ng)">赤</span>は配置不可</div>
+    <div id="status-pill">床を映してください</div>
+  </div>
+  <div>
+    <div id="fetch-panel">
+      <div class="title">商品URLから寸法を取得 (例: 無印良品の商品ページ)</div>
+      <div class="fetch-row">
+        <input type="url" id="fetch-url" inputmode="url" autocomplete="off" placeholder="https://www.muji.com/jp/ja/store/cmdty/detail/...">
+        <button id="fetch-btn">取得</button>
+      </div>
+      <div id="fetch-status"></div>
+    </div>
+    <div id="size-panel">
+      <div class="title">寸法 (cm) — 入力すると即座にARに反映</div>
+      <div class="size-row">
+        <div class="size-field"><span>幅</span><input type="number" id="size-w" inputmode="numeric" min="1" max="500" step="1"><span class="unit">cm</span></div>
+        <div class="size-field"><span>奥</span><input type="number" id="size-d" inputmode="numeric" min="1" max="500" step="1"><span class="unit">cm</span></div>
+        <div class="size-field"><span>高</span><input type="number" id="size-h" inputmode="numeric" min="1" max="500" step="1"><span class="unit">cm</span></div>
+      </div>
+      <button id="size-reset">既定サイズに戻す</button>
+    </div>
+    <div id="controls">
+      <button class="btn active" data-furniture="sofa">ソファ</button>
+      <button class="btn" data-furniture="bed">ベッド</button>
+      <button class="btn" data-furniture="desk">机</button>
+      <button class="btn" data-furniture="chair">椅子</button>
+      <button class="btn" data-furniture="dining_table">ダイニング</button>
+      <button class="btn" data-furniture="shelf">棚</button>
+      <button class="btn" data-furniture="wardrobe">クローゼット</button>
+      <button class="btn" data-furniture="tv_stand">テレビ台</button>
+      <button class="btn" data-furniture="refrigerator">冷蔵庫</button>
+      <button class="btn" data-furniture="tv">テレビ</button>
+      <button class="btn" data-furniture="microwave">電子レンジ</button>
+      <button class="btn" data-furniture="washing_machine">洗濯機</button>
+      <button class="btn" data-furniture="air_conditioner">エアコン</button>
+      <button class="btn" data-furniture="vacuum">掃除機</button>
+      <button class="btn" data-furniture="rice_cooker">炊飯器</button>
+      <button class="btn" data-furniture="kettle">ケトル</button>
+      <button class="btn clear" id="clear-btn">クリア</button>
+    </div>
+  </div>
+</div>
+
+<script type="importmap">
+{
+  "imports": {
+    "three": "https://unpkg.com/three@0.160.0/build/three.module.js"
+  }
+}
+</script>
+
+<script type="module">
+import * as THREE from 'three';
+
+const query = new URLSearchParams(location.search);
+const requestedProductName = query.get('name');
+const requestedPreset = query.get('preset');
+const requestedSizeCm = {
+  w: Number(query.get('w')),
+  d: Number(query.get('d')),
+  h: Number(query.get('h')),
+};
+const allPresets = ['sofa','bed','desk','chair','dining_table','shelf','wardrobe','tv_stand','refrigerator','tv','microwave','washing_machine','air_conditioner','vacuum','rice_cooker','kettle'];
+const validPreset = allPresets.includes(requestedPreset) ? requestedPreset : 'sofa';
+
+// ========== プラットフォーム判定 & QR表示 ==========
+(function setupPlatformUI() {
+  const ua = navigator.userAgent;
+  const isIOS = /iPhone|iPad|iPod/i.test(ua);
+  const isAndroid = /Android/i.test(ua);
+  const isDesktop = !isIOS && !isAndroid;
+
+  if (isIOS) {
+    // iOS: WebXR非対応。ARボタンを隠してiOSバナーを表示
+    document.getElementById('start-btn').style.display = 'none';
+    document.getElementById('ios-banner').style.display = 'block';
+    if (location.search) {
+      document.querySelector('#ios-banner a').href = '/ios.html' + location.search;
+    }
+  }
+
+  if (isAndroid) {
+    // Android: URL取得パネルを非表示
+    document.getElementById('fetch-panel').style.display = 'none';
+  }
+
+  if (isDesktop) {
+    // デスクトップ: 商品情報つきの場合はそのままAR起動URL、通常時はオンボーディングへ
+    document.getElementById('start-btn').style.display = 'none';
+    document.getElementById('qr-section').classList.add('visible');
+
+    const origin = location.origin;
+    const onboardingUrl = origin + '/onboarding.html' + location.search;
+    const androidUrl = requestedProductName ? (origin + location.pathname + location.search) : onboardingUrl;
+    const iosUrl = requestedProductName ? (origin + '/ios.html' + location.search) : onboardingUrl;
+
+    const toQrSrc = (url) =>
+      'https://api.qrserver.com/v1/create-qr-code/?size=180x180' +
+      '&bgcolor=1a2030&color=f5f7fa&margin=8' +
+      '&data=' + encodeURIComponent(url);
+
+    document.getElementById('qr-android').src = toQrSrc(androidUrl);
+    document.getElementById('qr-ios').src     = toQrSrc(iosUrl);
+  }
+})();
+
+const startScreen = document.getElementById('start-screen');
+const startBtn = document.getElementById('start-btn');
+const errorMsg = document.getElementById('error-msg');
+const arOverlay = document.getElementById('ar-overlay');
+const controls = document.getElementById('controls');
+const clearBtn = document.getElementById('clear-btn');
+const statusPill = document.getElementById('status-pill');
+const sizeInputs = {
+  w: document.getElementById('size-w'),
+  d: document.getElementById('size-d'),
+  h: document.getElementById('size-h'),
+};
+const sizeResetBtn = document.getElementById('size-reset');
+const fetchUrlInput = document.getElementById('fetch-url');
+const fetchBtn = document.getElementById('fetch-btn');
+const fetchStatus = document.getElementById('fetch-status');
+
+if (requestedProductName) {
+  startScreen.querySelector('h1').textContent = requestedProductName + ' をARで確認';
+  startScreen.querySelector('p').innerHTML =
+    '商品サイズを反映した近い形状で、部屋の中に配置して確認できます。<br>' +
+    '床を映し、リングが緑のときにタップして設置してください。';
+}
+
+let renderer, scene, camera, reticle;
+let hitTestSources = [];
+let localRefSpace = null;
+let viewerRefSpace = null;
+const placed = [];
+let currentFurnitureKey = validPreset;
+let ghost = null;
+
+// 家具ごとの既定サイズ (w=幅 X, d=奥 Z, h=高 Y, メートル) — 初期化時に自動計測
+const defaultSizes = {};
+// ユーザーが入力したカスタムサイズ。null の場合は既定値を使用
+const customSizes = {};
+for (const p of allPresets) customSizes[p] = null;
+
+if (requestedSizeCm.w > 0 && requestedSizeCm.d > 0 && requestedSizeCm.h > 0) {
+  customSizes[currentFurnitureKey] = {
+    w: requestedSizeCm.w / 100,
+    d: requestedSizeCm.d / 100,
+    h: requestedSizeCm.h / 100,
+  };
+}
+
+// ========== 家具生成関数 ==========
+const furniture = {
+  // ── 家具カテゴリ ──
+  sofa: () => {
+    const g = new THREE.Group();
+    const mat = new THREE.MeshStandardMaterial({ color: 0x7a6652, roughness: 0.8 });
+    const cushion = new THREE.MeshStandardMaterial({ color: 0xc4a882, roughness: 0.9 });
+    // 座面
+    const seat = new THREE.Mesh(new THREE.BoxGeometry(1.6, 0.2, 0.7), cushion);
+    seat.position.set(0, 0.3, 0);
+    g.add(seat);
+    // 背もたれ
+    const back = new THREE.Mesh(new THREE.BoxGeometry(1.6, 0.4, 0.12), cushion);
+    back.position.set(0, 0.55, -0.3);
+    g.add(back);
+    // ベース
+    const base = new THREE.Mesh(new THREE.BoxGeometry(1.65, 0.2, 0.75), mat);
+    base.position.set(0, 0.1, 0);
+    g.add(base);
+    // 肘掛け左
+    const armL = new THREE.Mesh(new THREE.BoxGeometry(0.1, 0.25, 0.7), mat);
+    armL.position.set(-0.78, 0.45, 0);
+    g.add(armL);
+    // 肘掛け右
+    const armR = new THREE.Mesh(new THREE.BoxGeometry(0.1, 0.25, 0.7), mat);
+    armR.position.set(0.78, 0.45, 0);
+    g.add(armR);
+    return g;
+  },
+  bed: () => {
+    const g = new THREE.Group();
+    const frame = new THREE.MeshStandardMaterial({ color: 0xb48a60, roughness: 0.7 });
+    const mattress = new THREE.MeshStandardMaterial({ color: 0xf0e8da, roughness: 0.9 });
+    // フレーム
+    const f = new THREE.Mesh(new THREE.BoxGeometry(1.0, 0.15, 2.0), frame);
+    f.position.set(0, 0.075, 0);
+    g.add(f);
+    // マットレス
+    const m = new THREE.Mesh(new THREE.BoxGeometry(0.95, 0.18, 1.9), mattress);
+    m.position.set(0, 0.24, 0.02);
+    g.add(m);
+    // ヘッドボード
+    const hb = new THREE.Mesh(new THREE.BoxGeometry(1.0, 0.45, 0.06), frame);
+    hb.position.set(0, 0.375, -0.97);
+    g.add(hb);
+    // 枕
+    const pillow = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.95 });
+    const p = new THREE.Mesh(new THREE.BoxGeometry(0.4, 0.08, 0.25), pillow);
+    p.position.set(0, 0.37, -0.72);
+    g.add(p);
+    return g;
+  },
+  desk: () => {
+    const g = new THREE.Group();
+    const mat = new THREE.MeshStandardMaterial({ color: 0xb48a60, roughness: 0.6 });
+    const top = new THREE.Mesh(new THREE.BoxGeometry(0.9, 0.04, 0.6), mat);
+    top.position.y = 0.72;
+    g.add(top);
+    const legGeo = new THREE.BoxGeometry(0.05, 0.72, 0.05);
+    for (const [x, z] of [[0.4, 0.25], [-0.4, 0.25], [0.4, -0.25], [-0.4, -0.25]]) {
+      const leg = new THREE.Mesh(legGeo, mat);
+      leg.position.set(x, 0.36, z);
+      g.add(leg);
+    }
+    return g;
+  },
+  chair: () => {
+    const g = new THREE.Group();
+    const mat = new THREE.MeshStandardMaterial({ color: 0x8d6748, roughness: 0.7 });
+    const seat = new THREE.Mesh(new THREE.BoxGeometry(0.45, 0.05, 0.45), mat);
+    seat.position.y = 0.45;
+    g.add(seat);
+    const back = new THREE.Mesh(new THREE.BoxGeometry(0.45, 0.35, 0.05), mat);
+    back.position.set(0, 0.65, -0.2);
+    g.add(back);
+    const legGeo = new THREE.BoxGeometry(0.05, 0.45, 0.05);
+    for (const [x, z] of [[0.18, 0.18], [-0.18, 0.18], [0.18, -0.18], [-0.18, -0.18]]) {
+      const leg = new THREE.Mesh(legGeo, mat);
+      leg.position.set(x, 0.225, z);
+      g.add(leg);
+    }
+    return g;
+  },
+  dining_table: () => {
+    const g = new THREE.Group();
+    const mat = new THREE.MeshStandardMaterial({ color: 0xa07850, roughness: 0.6 });
+    const top = new THREE.Mesh(new THREE.BoxGeometry(1.2, 0.05, 0.75), mat);
+    top.position.y = 0.72;
+    g.add(top);
+    const legGeo = new THREE.BoxGeometry(0.06, 0.72, 0.06);
+    for (const [x, z] of [[0.52, 0.3], [-0.52, 0.3], [0.52, -0.3], [-0.52, -0.3]]) {
+      const leg = new THREE.Mesh(legGeo, mat);
+      leg.position.set(x, 0.36, z);
+      g.add(leg);
+    }
+    return g;
+  },
+  shelf: () => {
+    const g = new THREE.Group();
+    const mat = new THREE.MeshStandardMaterial({ color: 0xc4a46e, roughness: 0.65 });
+    const side = new THREE.MeshStandardMaterial({ color: 0xb89860, roughness: 0.7 });
+    // 側板
+    const sL = new THREE.Mesh(new THREE.BoxGeometry(0.03, 1.2, 0.3), side);
+    sL.position.set(-0.35, 0.6, 0);
+    g.add(sL);
+    const sR = new THREE.Mesh(new THREE.BoxGeometry(0.03, 1.2, 0.3), side);
+    sR.position.set(0.35, 0.6, 0);
+    g.add(sR);
+    // 棚板 4段
+    for (let i = 0; i < 4; i++) {
+      const shelf = new THREE.Mesh(new THREE.BoxGeometry(0.67, 0.03, 0.3), mat);
+      shelf.position.set(0, 0.03 + i * 0.39, 0);
+      g.add(shelf);
+    }
+    return g;
+  },
+  wardrobe: () => {
+    const g = new THREE.Group();
+    const mat = new THREE.MeshStandardMaterial({ color: 0xc4a878, roughness: 0.7 });
+    const door = new THREE.MeshStandardMaterial({ color: 0xd4bc92, roughness: 0.65 });
+    // 本体
+    const body = new THREE.Mesh(new THREE.BoxGeometry(0.8, 1.8, 0.55), mat);
+    body.position.set(0, 0.9, 0);
+    g.add(body);
+    // 左扉
+    const dL = new THREE.Mesh(new THREE.BoxGeometry(0.38, 1.7, 0.03), door);
+    dL.position.set(-0.19, 0.9, 0.28);
+    g.add(dL);
+    // 右扉
+    const dR = new THREE.Mesh(new THREE.BoxGeometry(0.38, 1.7, 0.03), door);
+    dR.position.set(0.19, 0.9, 0.28);
+    g.add(dR);
+    // 取っ手
+    const handle = new THREE.MeshStandardMaterial({ color: 0x666666, metalness: 0.6, roughness: 0.3 });
+    const hL = new THREE.Mesh(new THREE.BoxGeometry(0.02, 0.12, 0.02), handle);
+    hL.position.set(-0.02, 0.9, 0.3);
+    g.add(hL);
+    const hR = new THREE.Mesh(new THREE.BoxGeometry(0.02, 0.12, 0.02), handle);
+    hR.position.set(0.02, 0.9, 0.3);
+    g.add(hR);
+    return g;
+  },
+  tv_stand: () => {
+    const g = new THREE.Group();
+    const mat = new THREE.MeshStandardMaterial({ color: 0x8a7050, roughness: 0.6 });
+    // 天板
+    const top = new THREE.Mesh(new THREE.BoxGeometry(1.2, 0.04, 0.4), mat);
+    top.position.set(0, 0.4, 0);
+    g.add(top);
+    // 棚板
+    const mid = new THREE.Mesh(new THREE.BoxGeometry(1.14, 0.03, 0.36), mat);
+    mid.position.set(0, 0.2, 0);
+    g.add(mid);
+    // 側板
+    for (const x of [-0.57, 0.57]) {
+      const s = new THREE.Mesh(new THREE.BoxGeometry(0.03, 0.4, 0.4), mat);
+      s.position.set(x, 0.2, 0);
+      g.add(s);
+    }
+    return g;
+  },
+
+  // ── 家電カテゴリ ──
+  refrigerator: () => {
+    const g = new THREE.Group();
+    const mat = new THREE.MeshStandardMaterial({ color: 0xe8e8e8, roughness: 0.3, metalness: 0.2 });
+    // 本体
+    const body = new THREE.Mesh(new THREE.BoxGeometry(0.6, 1.7, 0.65), mat);
+    body.position.set(0, 0.85, 0);
+    g.add(body);
+    // 上段ドア
+    const doorUp = new THREE.MeshStandardMaterial({ color: 0xf2f2f2, roughness: 0.25, metalness: 0.3 });
+    const du = new THREE.Mesh(new THREE.BoxGeometry(0.58, 1.0, 0.03), doorUp);
+    du.position.set(0, 1.2, 0.34);
+    g.add(du);
+    // 下段ドア
+    const dd = new THREE.Mesh(new THREE.BoxGeometry(0.58, 0.6, 0.03), doorUp);
+    dd.position.set(0, 0.35, 0.34);
+    g.add(dd);
+    // 取っ手
+    const hm = new THREE.MeshStandardMaterial({ color: 0xaaaaaa, metalness: 0.5, roughness: 0.3 });
+    const h1 = new THREE.Mesh(new THREE.BoxGeometry(0.04, 0.15, 0.03), hm);
+    h1.position.set(0.24, 1.0, 0.36);
+    g.add(h1);
+    const h2 = new THREE.Mesh(new THREE.BoxGeometry(0.04, 0.12, 0.03), hm);
+    h2.position.set(0.24, 0.35, 0.36);
+    g.add(h2);
+    // 仕切り線
+    const line = new THREE.Mesh(new THREE.BoxGeometry(0.58, 0.01, 0.04), hm);
+    line.position.set(0, 0.68, 0.33);
+    g.add(line);
+    return g;
+  },
+  tv: () => {
+    const g = new THREE.Group();
+    const bezel = new THREE.MeshStandardMaterial({ color: 0x1a1a1a, roughness: 0.3 });
+    const screen = new THREE.MeshStandardMaterial({ color: 0x222233, roughness: 0.1, metalness: 0.1 });
+    // 画面
+    const panel = new THREE.Mesh(new THREE.BoxGeometry(0.95, 0.55, 0.04), bezel);
+    panel.position.set(0, 0.55, 0);
+    g.add(panel);
+    const scr = new THREE.Mesh(new THREE.BoxGeometry(0.88, 0.48, 0.01), screen);
+    scr.position.set(0, 0.55, 0.025);
+    g.add(scr);
+    // スタンド
+    const standMat = new THREE.MeshStandardMaterial({ color: 0x333333, metalness: 0.4, roughness: 0.4 });
+    const base = new THREE.Mesh(new THREE.BoxGeometry(0.35, 0.02, 0.18), standMat);
+    base.position.set(0, 0.01, 0.05);
+    g.add(base);
+    const neck = new THREE.Mesh(new THREE.BoxGeometry(0.06, 0.26, 0.06), standMat);
+    neck.position.set(0, 0.14, 0);
+    g.add(neck);
+    return g;
+  },
+  microwave: () => {
+    const g = new THREE.Group();
+    const mat = new THREE.MeshStandardMaterial({ color: 0x2a2a2a, roughness: 0.35, metalness: 0.2 });
+    const body = new THREE.Mesh(new THREE.BoxGeometry(0.46, 0.28, 0.35), mat);
+    body.position.set(0, 0.14, 0);
+    g.add(body);
+    // ドア窓
+    const glass = new THREE.MeshStandardMaterial({ color: 0x334455, roughness: 0.1, metalness: 0.1 });
+    const win = new THREE.Mesh(new THREE.BoxGeometry(0.25, 0.2, 0.01), glass);
+    win.position.set(-0.05, 0.15, 0.18);
+    g.add(win);
+    // 操作パネル
+    const panel = new THREE.MeshStandardMaterial({ color: 0x444444, roughness: 0.4 });
+    const ctrl = new THREE.Mesh(new THREE.BoxGeometry(0.1, 0.22, 0.01), panel);
+    ctrl.position.set(0.16, 0.15, 0.18);
+    g.add(ctrl);
+    return g;
+  },
+  washing_machine: () => {
+    const g = new THREE.Group();
+    const mat = new THREE.MeshStandardMaterial({ color: 0xf0f0f0, roughness: 0.3, metalness: 0.15 });
+    const body = new THREE.Mesh(new THREE.BoxGeometry(0.6, 0.85, 0.6), mat);
+    body.position.set(0, 0.425, 0);
+    g.add(body);
+    // ドラム窓（円形）
+    const glass = new THREE.MeshStandardMaterial({ color: 0x556677, roughness: 0.1, metalness: 0.2 });
+    const drum = new THREE.Mesh(new THREE.CylinderGeometry(0.18, 0.18, 0.03, 24), glass);
+    drum.rotation.x = Math.PI / 2;
+    drum.position.set(0, 0.38, 0.31);
+    g.add(drum);
+    // 操作パネル上部
+    const panel = new THREE.MeshStandardMaterial({ color: 0xdddddd, roughness: 0.4 });
+    const ctrl = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.08, 0.02), panel);
+    ctrl.position.set(0, 0.78, 0.3);
+    g.add(ctrl);
+    return g;
+  },
+  air_conditioner: () => {
+    const g = new THREE.Group();
+    const mat = new THREE.MeshStandardMaterial({ color: 0xf5f5f5, roughness: 0.3, metalness: 0.1 });
+    // 室内機本体
+    const body = new THREE.Mesh(new THREE.BoxGeometry(0.8, 0.26, 0.22), mat);
+    body.position.set(0, 0.13, 0);
+    g.add(body);
+    // 吹き出し口
+    const vent = new THREE.MeshStandardMaterial({ color: 0xdcdcdc, roughness: 0.4 });
+    const flap = new THREE.Mesh(new THREE.BoxGeometry(0.7, 0.02, 0.12), vent);
+    flap.position.set(0, -0.01, 0.06);
+    flap.rotation.x = 0.15;
+    g.add(flap);
+    return g;
+  },
+  vacuum: () => {
+    const g = new THREE.Group();
+    const mat = new THREE.MeshStandardMaterial({ color: 0xcc3333, roughness: 0.4, metalness: 0.2 });
+    const gray = new THREE.MeshStandardMaterial({ color: 0x555555, roughness: 0.5 });
+    // 本体（スティック型）
+    const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.02, 0.02, 0.9, 12), gray);
+    pole.position.set(0, 0.55, 0);
+    pole.rotation.z = 0.15;
+    g.add(pole);
+    // モーター部
+    const motor = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.06, 0.2, 16), mat);
+    motor.position.set(0.07, 0.95, 0);
+    g.add(motor);
+    // ヘッド
+    const head = new THREE.Mesh(new THREE.BoxGeometry(0.25, 0.05, 0.1), gray);
+    head.position.set(-0.06, 0.05, 0);
+    g.add(head);
+    return g;
+  },
+  rice_cooker: () => {
+    const g = new THREE.Group();
+    const mat = new THREE.MeshStandardMaterial({ color: 0x333333, roughness: 0.35, metalness: 0.15 });
+    // 本体（丸み）
+    const body = new THREE.Mesh(new THREE.CylinderGeometry(0.15, 0.16, 0.22, 24), mat);
+    body.position.set(0, 0.11, 0);
+    g.add(body);
+    // 蓋
+    const lid = new THREE.MeshStandardMaterial({ color: 0x444444, roughness: 0.3 });
+    const top = new THREE.Mesh(new THREE.CylinderGeometry(0.14, 0.15, 0.04, 24), lid);
+    top.position.set(0, 0.24, 0);
+    g.add(top);
+    // 蒸気口
+    const vent = new THREE.Mesh(new THREE.CylinderGeometry(0.015, 0.015, 0.02, 8), lid);
+    vent.position.set(0.05, 0.27, 0);
+    g.add(vent);
+    return g;
+  },
+  kettle: () => {
+    const g = new THREE.Group();
+    const mat = new THREE.MeshStandardMaterial({ color: 0xe0e0e0, roughness: 0.25, metalness: 0.3 });
+    // 本体
+    const body = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.09, 0.2, 24), mat);
+    body.position.set(0, 0.1, 0);
+    g.add(body);
+    // 蓋
+    const lid = new THREE.Mesh(new THREE.CylinderGeometry(0.065, 0.07, 0.02, 24), mat);
+    lid.position.set(0, 0.21, 0);
+    g.add(lid);
+    // 取っ手
+    const handle = new THREE.MeshStandardMaterial({ color: 0x222222, roughness: 0.5 });
+    const h = new THREE.Mesh(new THREE.TorusGeometry(0.05, 0.012, 8, 16, Math.PI), handle);
+    h.position.set(0.1, 0.14, 0);
+    h.rotation.z = -Math.PI / 2;
+    g.add(h);
+    // 注ぎ口
+    const spout = new THREE.Mesh(new THREE.CylinderGeometry(0.015, 0.02, 0.06, 8), mat);
+    spout.position.set(-0.09, 0.17, 0);
+    spout.rotation.z = 0.5;
+    g.add(spout);
+    return g;
+  }
+};
+
+// ========== サイズ計測 / 適用 ==========
+function measureDefaultSizes() {
+  const tmpVec = new THREE.Vector3();
+  const tmpBox = new THREE.Box3();
+  for (const key of Object.keys(furniture)) {
+    const tmp = furniture[key]();
+    tmp.updateMatrixWorld(true);
+    tmpBox.setFromObject(tmp);
+    tmpBox.getSize(tmpVec);
+    defaultSizes[key] = { w: tmpVec.x, d: tmpVec.z, h: tmpVec.y };
+  }
+}
+
+function getEffectiveSize(key) {
+  return customSizes[key] || defaultSizes[key];
+}
+
+function applySizeToGroup(group, key) {
+  const def = defaultSizes[key];
+  const cur = customSizes[key];
+  if (!cur) {
+    group.scale.set(1, 1, 1);
+  } else {
+    group.scale.set(cur.w / def.w, cur.h / def.h, cur.d / def.d);
+  }
+}
+
+function updateSizeInputsFromCurrent() {
+  const s = getEffectiveSize(currentFurnitureKey);
+  sizeInputs.w.value = Math.round(s.w * 100);
+  sizeInputs.d.value = Math.round(s.d * 100);
+  sizeInputs.h.value = Math.round(s.h * 100);
+}
+
+function syncFurnitureButtons() {
+  for (const b of controls.querySelectorAll('.btn[data-furniture]')) {
+    b.classList.toggle('active', b.dataset.furniture === currentFurnitureKey);
+  }
+}
+
+function onSizeInputChange(axis) {
+  const cm = parseFloat(sizeInputs[axis].value);
+  if (!isFinite(cm) || cm <= 0) return;
+  const def = defaultSizes[currentFurnitureKey];
+  const cur = customSizes[currentFurnitureKey] || { ...def };
+  cur[axis] = cm / 100;
+  customSizes[currentFurnitureKey] = cur;
+  if (ghost) applySizeToGroup(ghost, currentFurnitureKey);
+}
+
+for (const axis of ['w', 'd', 'h']) {
+  sizeInputs[axis].addEventListener('input', () => onSizeInputChange(axis));
+}
+sizeResetBtn.addEventListener('click', () => {
+  customSizes[currentFurnitureKey] = null;
+  updateSizeInputsFromCurrent();
+  if (ghost) applySizeToGroup(ghost, currentFurnitureKey);
+});
+
+// ========== 外部URLから寸法を取得 ==========
+async function fetchDimensionsFromUrl() {
+  const url = fetchUrlInput.value.trim();
+  if (!url) {
+    fetchStatus.textContent = 'URLを入力してください';
+    fetchStatus.className = 'error';
+    return;
+  }
+  fetchStatus.textContent = '取得中...';
+  fetchStatus.className = '';
+  fetchBtn.disabled = true;
+  try {
+    const resp = await fetch(`/api/fetch-dimensions?url=${encodeURIComponent(url)}`);
+    const data = await resp.json();
+    if (!data.ok) throw new Error(data.error || '取得失敗');
+
+    // 取得値 (cm) を現在選択中の家具のカスタムサイズとして適用
+    customSizes[currentFurnitureKey] = {
+      w: data.w / 100,
+      d: data.d / 100,
+      h: data.h / 100,
+    };
+    updateSizeInputsFromCurrent();
+    if (ghost) applySizeToGroup(ghost, currentFurnitureKey);
+
+    const label = data.name ? data.name.slice(0, 40) : '商品';
+    fetchStatus.textContent = `✓ ${label}\n${data.w}×${data.d}×${data.h} cm`;
+    fetchStatus.className = 'success';
+  } catch (e) {
+    fetchStatus.textContent = `✗ ${e.message}`;
+    fetchStatus.className = 'error';
+  } finally {
+    fetchBtn.disabled = false;
+  }
+}
+fetchBtn.addEventListener('click', fetchDimensionsFromUrl);
+fetchUrlInput.addEventListener('keydown', (e) => {
+  if (e.key === 'Enter') {
+    e.preventDefault();
+    fetchDimensionsFromUrl();
+  }
+});
+
+// ========== サポート確認 ==========
+async function checkSupport() {
+  if (!('xr' in navigator)) {
+    return 'このブラウザはWebXRに対応していません。\nAndroid Chrome (ARCore対応端末) でお試しください。\n※ iOS Safari は WebXR 非対応です。';
+  }
+  try {
+    const ok = await navigator.xr.isSessionSupported('immersive-ar');
+    if (!ok) return 'immersive-ar セッションに対応していません。\nARCore対応のAndroid端末が必要です。';
+  } catch (e) {
+    return 'WebXRサポート確認に失敗: ' + e.message;
+  }
+  return null;
+}
+
+startBtn.addEventListener('click', async () => {
+  errorMsg.style.display = 'none';
+  startBtn.disabled = true;
+  const err = await checkSupport();
+  if (err) {
+    errorMsg.textContent = err;
+    errorMsg.style.display = 'block';
+    startBtn.disabled = false;
+    return;
+  }
+  try { await startAR(); }
+  catch (e) {
+    errorMsg.textContent = 'AR開始に失敗: ' + e.message;
+    errorMsg.style.display = 'block';
+    startBtn.disabled = false;
+  }
+});
+
+// ========== AR セッション開始 ==========
+async function startAR() {
+  renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+  renderer.setPixelRatio(window.devicePixelRatio);
+  renderer.setSize(window.innerWidth, window.innerHeight);
+  renderer.xr.enabled = true;
+  document.body.appendChild(renderer.domElement);
+
+  scene = new THREE.Scene();
+  camera = new THREE.PerspectiveCamera(70, window.innerWidth / window.innerHeight, 0.01, 50);
+
+  scene.add(new THREE.HemisphereLight(0xffffff, 0x445566, 1.0));
+  const dir = new THREE.DirectionalLight(0xffffff, 1.2);
+  dir.position.set(1, 3, 2);
+  scene.add(dir);
+
+  // レティクル
+  const ringGeo = new THREE.RingGeometry(0.07, 0.09, 32).rotateX(-Math.PI / 2);
+  const ringMat = new THREE.MeshBasicMaterial({ color: 0xffffff, side: THREE.DoubleSide });
+  reticle = new THREE.Mesh(ringGeo, ringMat);
+  reticle.matrixAutoUpdate = false;
+  reticle.visible = false;
+  scene.add(reticle);
+
+  // タップイベント
+  const controller = renderer.xr.getController(0);
+  controller.addEventListener('select', onSelect);
+  scene.add(controller);
+
+  measureDefaultSizes();
+  updateSizeInputsFromCurrent();
+  syncFurnitureButtons();
+  buildGhost(currentFurnitureKey);
+  applySizeToGroup(ghost, currentFurnitureKey);
+
+  const session = await navigator.xr.requestSession('immersive-ar', {
+    requiredFeatures: ['hit-test', 'local'],
+    optionalFeatures: ['dom-overlay'],
+    domOverlay: { root: arOverlay }
+  });
+
+  renderer.xr.setReferenceSpaceType('local');
+  await renderer.xr.setSession(session);
+
+  localRefSpace = await session.requestReferenceSpace('local');
+  viewerRefSpace = await session.requestReferenceSpace('viewer');
+
+  // 多点 hit-test (中央 + 上下左右に角度オフセット)
+  const A = 0.07; // ~4度
+  const dirs = [
+    [0, 0, -1],
+    [Math.sin(A), 0, -Math.cos(A)],
+    [-Math.sin(A), 0, -Math.cos(A)],
+    [0, Math.sin(A), -Math.cos(A)],
+    [0, -Math.sin(A), -Math.cos(A)],
+  ];
+  hitTestSources = [];
+  for (const [dx, dy, dz] of dirs) {
+    const ray = new XRRay({ x: 0, y: 0, z: 0, w: 1 }, { x: dx, y: dy, z: dz, w: 0 });
+    const src = await session.requestHitTestSource({ space: viewerRefSpace, offsetRay: ray });
+    hitTestSources.push(src);
+  }
+
+  session.addEventListener('end', onSessionEnd);
+
+  startScreen.style.display = 'none';
+  arOverlay.classList.add('visible');
+
+  renderer.setAnimationLoop(render);
+  window.addEventListener('resize', onResize);
+}
+
+function onResize() {
+  if (!renderer) return;
+  camera.aspect = window.innerWidth / window.innerHeight;
+  camera.updateProjectionMatrix();
+  renderer.setSize(window.innerWidth, window.innerHeight);
+}
+
+// ========== ゴースト (配置プレビュー) ==========
+function buildGhost(key) {
+  if (ghost) {
+    scene.remove(ghost);
+    ghost.traverse((o) => {
+      if (o.isMesh) {
+        o.userData.originalMaterial?.dispose();
+        o.userData.invalidMaterial?.dispose();
+      }
+    });
+  }
+  ghost = furniture[key]();
+  ghost.traverse((obj) => {
+    if (obj.isMesh) {
+      const orig = obj.material.clone();
+      orig.transparent = true;
+      orig.opacity = 0.55;
+      orig.depthWrite = false;
+      const invalid = new THREE.MeshStandardMaterial({
+        color: 0xff3b55,
+        emissive: 0x550008,
+        transparent: true,
+        opacity: 0.55,
+        depthWrite: false,
+      });
+      obj.userData.originalMaterial = orig;
+      obj.userData.invalidMaterial = invalid;
+      obj.material = orig;
+    }
+  });
+  ghost.visible = false;
+  ghost.userData.valid = false;
+  scene.add(ghost);
+}
+
+function setGhostValid(valid) {
+  ghost.userData.valid = valid;
+  ghost.traverse((obj) => {
+    if (obj.isMesh) {
+      obj.material = valid ? obj.userData.originalMaterial : obj.userData.invalidMaterial;
+    }
+  });
+  reticle.material.color.set(valid ? 0x44dd88 : 0xff3b55);
+}
+
+// ========== タップで配置 ==========
+function onSelect() {
+  if (!ghost || !ghost.visible || !ghost.userData.valid) return;
+  const obj = furniture[currentFurnitureKey]();
+  applySizeToGroup(obj, currentFurnitureKey);
+  obj.position.copy(ghost.position);
+  obj.quaternion.copy(ghost.quaternion);
+  scene.add(obj);
+  placed.push(obj);
+}
+
+function onSessionEnd() {
+  hitTestSources = [];
+  localRefSpace = null;
+  renderer.setAnimationLoop(null);
+  arOverlay.classList.remove('visible');
+  startScreen.style.display = 'flex';
+  startBtn.disabled = false;
+  for (const o of placed) scene.remove(o);
+  placed.length = 0;
+  if (ghost) scene.remove(ghost);
+  ghost = null;
+  if (renderer.domElement.parentNode) {
+    renderer.domElement.parentNode.removeChild(renderer.domElement);
+  }
+  renderer.dispose();
+  renderer = null;
+}
+
+// ========== 衝突判定用の作業オブジェクト ==========
+const _ghostBox = new THREE.Box3();
+const _otherBox = new THREE.Box3();
+const _normalUp = new THREE.Vector3();
+const _hitMatrix = new THREE.Matrix4();
+
+// ========== レンダーループ ==========
+function render(time, frame) {
+  if (frame && hitTestSources.length > 0 && ghost) {
+    const heights = [];
+    let centerPose = null;
+    let normalIsUp = false;
+
+    for (let i = 0; i < hitTestSources.length; i++) {
+      const results = frame.getHitTestResults(hitTestSources[i]);
+      if (results.length === 0) continue;
+      const pose = results[0].getPose(localRefSpace);
+      heights.push(pose.transform.position.y);
+      if (i === 0) {
+        centerPose = pose;
+        _hitMatrix.fromArray(pose.transform.matrix);
+        _normalUp.set(0, 1, 0).transformDirection(_hitMatrix);
+        normalIsUp = _normalUp.y > 0.9; // 法線が上向き ≒ 床
+      }
+    }
+
+    if (centerPose && heights.length >= 3) {
+      reticle.visible = true;
+      reticle.matrix.fromArray(centerPose.transform.matrix);
+
+      // ゴーストをレティクル位置に配置
+      ghost.visible = true;
+      ghost.position.setFromMatrixPosition(reticle.matrix);
+      ghost.quaternion.setFromRotationMatrix(reticle.matrix);
+      ghost.updateMatrixWorld(true);
+
+      // 1. 平面性: 法線が上向き かつ 周辺サンプル点の高低差が小さい
+      const variance = Math.max(...heights) - Math.min(...heights);
+      const isFlat = normalIsUp && variance < 0.05;
+
+      // 2. 既配置家具との AABB 衝突
+      let hitsOther = false;
+      _ghostBox.setFromObject(ghost);
+      // 床貼り付き対策で底面を少し上げる (誤検出回避)
+      _ghostBox.min.y += 0.005;
+      for (const p of placed) {
+        _otherBox.setFromObject(p);
+        _otherBox.min.y += 0.005;
+        if (_ghostBox.intersectsBox(_otherBox)) { hitsOther = true; break; }
+      }
+
+      const valid = isFlat && !hitsOther;
+      setGhostValid(valid);
+
+      if (!isFlat) {
+        statusPill.textContent = '配置不可: 平らな床ではありません';
+        statusPill.className = 'ng';
+      } else if (hitsOther) {
+        statusPill.textContent = '配置不可: 他の家具と重なっています';
+        statusPill.className = 'ng';
+      } else {
+        statusPill.textContent = '配置OK — タップで設置';
+        statusPill.className = 'ok';
+      }
+    } else {
+      reticle.visible = false;
+      ghost.visible = false;
+      statusPill.textContent = '床を映してください';
+      statusPill.className = '';
+    }
+  }
+  renderer.render(scene, camera);
+}
+
+// ========== UI ==========
+controls.addEventListener('click', (e) => {
+  const btn = e.target.closest('.btn');
+  if (!btn || !btn.dataset.furniture) return;
+  currentFurnitureKey = btn.dataset.furniture;
+  for (const b of controls.querySelectorAll('.btn[data-furniture]')) {
+    b.classList.toggle('active', b === btn);
+  }
+  updateSizeInputsFromCurrent();
+  if (ghost) {
+    buildGhost(currentFurnitureKey);
+    applySizeToGroup(ghost, currentFurnitureKey);
+  }
+});
+
+clearBtn.addEventListener('click', () => {
+  for (const o of placed) scene.remove(o);
+  placed.length = 0;
+});
+</script>
+
+</body>
+</html>
