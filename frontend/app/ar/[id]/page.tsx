@@ -1,11 +1,9 @@
-import { notFound, redirect } from 'next/navigation';
-import { buildArRedirectUrl } from '@/lib/ar';
+import { notFound } from 'next/navigation';
+import ArViewer from '@/components/ArViewer';
 import { getProductById } from '@/lib/products';
 
 type Props = {
-  params: {
-    id: string;
-  };
+  params: { id: string };
 };
 
 export default function ArProductPage({ params }: Props) {
@@ -15,5 +13,5 @@ export default function ArProductPage({ params }: Props) {
     notFound();
   }
 
-  redirect(buildArRedirectUrl(product));
+  return <ArViewer product={product} />;
 }

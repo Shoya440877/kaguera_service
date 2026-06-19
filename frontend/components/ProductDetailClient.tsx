@@ -134,7 +134,7 @@ export default function ProductDetailClient({ product }: Props) {
           className="kaguera-button-neutral w-full"
         >
           <ExternalLink size={15} />
-          Web版で見る（テスト用・AR機能なし）
+          Web / 3Dビューで見る
         </a>
 
         <button

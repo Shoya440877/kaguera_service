@@ -467,7 +467,10 @@ export default function RoomPlannerSection({ tasteAnswers, roomProfile }: Props)
         room_depth_cm: ROOM_DIMENSIONS_CM.depth,
         items: toLayoutItems(placedItems),
       });
-      setShareUrl(`${window.location.origin}/layouts/${publicId}`);
+      // 共有 URL のベース: 別端末(スマホ等)から到達できるよう、設定があれば
+      // NEXT_PUBLIC_SITE_URL(LAN IP や公開ドメイン)を優先する。未設定なら現在のオリジン。
+      const shareOrigin = (process.env.NEXT_PUBLIC_SITE_URL || window.location.origin).replace(/\/$/, '');
+      setShareUrl(`${shareOrigin}/layouts/${publicId}`);
       setCopied(false);
     } catch {
       setSaveError(true);
