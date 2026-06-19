@@ -18,5 +18,22 @@ class Settings(BaseSettings):
         """CORS origins as a list (stored comma-separated in the env var)."""
         return [origin.strip() for origin in self.cors_origins.split(",") if origin.strip()]
 
+    @property
+    def sqlalchemy_url(self) -> str:
+        """Database URL pinned to the psycopg (v3) driver.
+
+        Managed Postgres providers (Render, Heroku, ...) inject a bare
+        ``postgres://`` / ``postgresql://`` URL, which SQLAlchemy resolves to
+        psycopg2 -- a driver we deliberately don't ship. Rewrite the scheme so
+        the connection uses psycopg v3 instead. A URL that already names a
+        driver (e.g. ``postgresql+psycopg://``) is returned unchanged.
+        """
+        url = self.database_url
+        if url.startswith("postgres://"):
+            return url.replace("postgres://", "postgresql+psycopg://", 1)
+        if url.startswith("postgresql://"):
+            return url.replace("postgresql://", "postgresql+psycopg://", 1)
+        return url
+
 
 settings = Settings()

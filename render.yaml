@@ -1,0 +1,33 @@
+# Render Blueprint — Kaguera backend (FastAPI) + managed PostgreSQL.
+#
+# Deploy: Render dashboard → New → Blueprint → pick this repo → Apply.
+# Render reads this file, provisions the database and the web service, and
+# wires DATABASE_URL from the database into the API automatically.
+#
+# After the API is live, set NEXT_PUBLIC_LAYOUT_API_BASE on Vercel to the
+# API's URL (https://<service>.onrender.com, no trailing slash) and redeploy.
+
+databases:
+  - name: kaguera-db
+    databaseName: kaguera
+    user: kaguera
+    plan: free
+
+services:
+  - type: web
+    name: kaguera-api
+    runtime: docker
+    plan: free
+    dockerfilePath: ./backend/Dockerfile
+    dockerContext: ./backend
+    healthCheckPath: /health
+    envVars:
+      # Injected from the managed database above (postgresql://...); the app
+      # rewrites the scheme to psycopg v3 at startup (see core/config.py).
+      - key: DATABASE_URL
+        fromDatabase:
+          name: kaguera-db
+          property: connectionString
+      # Browser origin allowed by CORS — the public Vercel frontend.
+      - key: CORS_ORIGINS
+        value: https://kaguera-service.vercel.app

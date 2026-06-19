@@ -9,7 +9,7 @@ from app.core.config import settings
 
 # pool_pre_ping recovers gracefully from connections dropped by the DB
 # (e.g. when the Postgres container restarts during development).
-engine = create_engine(settings.database_url, pool_pre_ping=True)
+engine = create_engine(settings.sqlalchemy_url, pool_pre_ping=True)
 SessionLocal = sessionmaker(bind=engine, autoflush=False, autocommit=False)
 
 

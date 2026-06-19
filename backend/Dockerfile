@@ -13,4 +13,7 @@ COPY app ./app
 
 EXPOSE 8000
 
-CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
+# Bind to the platform-provided $PORT when present (Render/Cloud Run/etc.),
+# falling back to 8000 for local docker compose. `exec` keeps uvicorn as PID 1
+# so it receives SIGTERM directly for a clean shutdown.
+CMD ["sh", "-c", "exec uvicorn app.main:app --host 0.0.0.0 --port ${PORT:-8000}"]
