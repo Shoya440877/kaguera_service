@@ -1,0 +1,4 @@
+# Local-only helper scripts (reference personal paths, not part of the app)
+_extract_docx.py
+_extract_portfolio.py
+_portfolio_tmp.docx

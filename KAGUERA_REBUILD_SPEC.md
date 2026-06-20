@@ -1,34 +1,5 @@
-# kaguera リビルド設計書（個人ポートフォリオ版）
+# kaguera 設計書
 
-このドキュメントは、インターンで作成した家具・家電 AR コーディネート Web アプリ「kaguera」を、
-**コンセプトを引き継いで個人ポートフォリオとして作り直す**ための作業指示書です。
-Claude Code にこのファイルを渡し、上から順に実装していくことを想定しています。
-
-> 実装方針: 元プロジェクトのコードを丸ごとコピーするのではなく、構成とコンセプトを土台に
-> **コードは新規に書き起こす**。商品データ・文章・チーム表記は自分のものに差し替える。
-
----
-
-## 0. 最初にやること（権利・クレジットまわり）
-
-実装前に必ず対応する。ポートフォリオは採用担当（エンジニア）に見られるため、ここを外すと印象を損なう。
-
-1. **チームメンバーの実名を削除する**
-   - 元 `Footer.tsx` に `チームD：堀翔哉 ほか` という実名表記がある。
-   - 個人リポジトリに他人の実名を載せたまま公開しない。
-   - 対応案: `&copy; 2026 KAGUERA` のみにする、もしくは
-     「大学のチーム開発で作成したアプリを個人で再設計したものです」と README に明記し、
-     フッターのクレジットは外す or 「Original concept: チーム開発（大学内ハッカソン）」程度に留める。
-
-2. **README に出自を明記する**
-   - 「インターン/チーム開発で取り組んだ課題を、個人学習目的で再構築したもの」と書く。
-   - これは権利面の誠実さを示すと同時に、就活で「主体的に再設計した」アピールにもなる。
-
-3. **API キー・シークレットを混入させない**
-   - `ANTHROPIC_API_KEY` / `JINA_API_KEY` は `.env.local`（git 管理外）に置く。
-   - `.gitignore` に `.env*` を含める（`.env.example` のみコミット）。
-
----
 
 ## 1. プロジェクト概要
 
@@ -119,14 +90,11 @@ kaguera/
 └── README.md
 ```
 
-> 元プロジェクトは `frontend/` 相当がリポジトリ直下だった可能性が高い。
-> モノレポにするか分けるかは任意だが、本設計書は frontend/backend に分ける前提。
-
 ---
 
 ## 4. ステップ1: フロントエンドの復元
 
-元のファイル群はほぼそのまま使える。Claude Code には以下を順に依頼する。
+元のファイル群はほぼそのまま使える。AIには以下を順に依頼する。
 
 ### 4-1. `lib/products.ts`（実物あり・型一致確認済み）
 他の全ファイルが依存する土台。**実物が手元にある**（58 件・型は下記）。
@@ -282,7 +250,7 @@ Pydantic v2 で `LayoutCreate` / `LayoutItem` / `LayoutRead` を定義。
 
 ### 5-5. main.py
 - FastAPI アプリ生成、CORS（`http://localhost:3000` と本番 Vercel ドメインを許可）
-- 起動時に `Base.metadata.create_all`（学習用途なら可。本番志向なら Alembic）
+- 起動時に `Base.metadata.create_all`（
 - ルーター登録、`/health` エンドポイント
 
 ### 5-6. Docker
@@ -309,7 +277,7 @@ volumes:
   pgdata:
 ```
 
-### 5-7. テスト（ポートフォリオ加点要素）
+### 5-7. テスト
 `backend/tests/test_layouts.py` を pytest + FastAPI TestClient で。
 - POST → 201 と public_id 発番を確認
 - 発番された public_id で GET → 同じ items が返り view_count が増える
@@ -320,7 +288,7 @@ volumes:
 
 ## 6. ステップ3: フロントとバックエンドの接続
 
-### 6-1. `lib/layoutApi.ts`（新規）
+### 6-1. `lib/layoutApi.ts`
 ```ts
 const BASE = process.env.NEXT_PUBLIC_LAYOUT_API_BASE ?? 'http://localhost:8000';
 
@@ -372,7 +340,7 @@ CORS_ORIGINS=http://localhost:3000
 
 ---
 
-## 8. README に書くと良いこと（就活アピール）
+## 8. README に書くと良いこと
 
 1. **このアプリは何か**（一人暮らし向け AR 家具コーディネート）
 2. **出自の明記**（チーム開発の課題を個人で再設計・再実装したもの）
@@ -386,31 +354,4 @@ CORS_ORIGINS=http://localhost:3000
 
 ---
 
-## 9. 作業順チェックリスト
 
-- [ ] Footer の実名を削除、README に出自を明記
-- [ ] `.gitignore` に `.env*` を追加、`.env.example` を用意
-- [ ] `lib/products.ts` を配置（実物受領済み・58 件。`next.config.mjs` の images に unsplash 許可があるか確認）
-- [ ] 受領済みのフロントファイルを配置
-- [ ] RoomPlannerSection / RoomView3D を用意（手元になければ再実装）
-- [ ] `npm run build` が通ることを確認
-- [ ] backend: models/schemas/services/api/main を実装
-- [ ] backend: Dockerfile + docker-compose で `docker compose up` 起動確認
-- [ ] backend: pytest を通す
-- [ ] `lib/layoutApi.ts` + 保存/共有ボタン + `/layouts/[publicId]` を実装
-- [ ] フロント↔API の疎通確認（保存→QR→別タブで復元）
-- [ ] GitHub リポジトリ作成 → push → Vercel / Render へデプロイ
-- [ ] README 仕上げ
-
----
-
-## 付録: 元コードで気づいた小さな改善候補（任意）
-
-- `analyze-room` / `recommend` の `model: 'claude-sonnet-4-20250514'` は
-  実装時点の最新モデル名に更新する（公式ドキュメントで確認）。
-- `fetch-dimensions` は現状ニトリ専用。対応サイトを増やすなら
-  「サイトごとの parser を関数テーブル化」するとポートフォリオの設計力アピールになる。
-- AABB 衝突判定（README 記載の WebAR 版機能）をマイページの 2D 配置にも入れると
-  「家具が重なって置けない」UX が一貫する。
-- auth/cart は localStorage 実装。FastAPI 側に寄せれば
-  「認証付き API」までアピール範囲を広げられる（時間があれば）。
