@@ -68,6 +68,7 @@
 |---|---|
 | フロントエンド | Next.js 14（App Router）/ React 18 / TypeScript（strict）/ Tailwind CSS |
 | UI 補助 | lucide-react（アイコン）/ qrcode.react（QR）/ `@anthropic-ai/sdk` |
+| AR | **Three.js `0.160.0`**（生の WebXR Device API + Hit Test API を実装、独自の AABB 衝突判定）/ **Google `<model-viewer>`**（`.glb` / `.usdz` 表示、Android Scene Viewer・WebXR と iOS Quick Look の出し分け）※いずれも CDN（unpkg）読み込みで npm 依存には含めていない |
 | AI | Anthropic Claude（`claude-sonnet-4-6`）— マルチモーダル入力 → JSON 構造化出力 |
 | バックエンド | FastAPI / Python 3.12 / Uvicorn |
 | DB / ORM | PostgreSQL 16 / SQLAlchemy 2.0（`Mapped`・`select()`）/ psycopg 3 / Pydantic v2 |
@@ -93,7 +94,10 @@
 
 - **Claude のマルチモーダル入力 → JSON 構造化出力 + フォールバック設計**：間取り画像を解析し構造化 JSON を得る。キー無し・失敗時もローカルロジックで必ず動く。
 - **寸法スクレイピングの抽出優先順**：JSON-LD → 日本語パターン → W×D×H の順で寸法を抽出。
-- **AR の出し分け**：Android = WebXR（Three.js + Hit Test + AABB 衝突判定）、iOS = AR Quick Look（`.usdz`）。
+- **AR 実装は 2 系統**：
+  - 商品詳細ページ（[`ArViewer.tsx`](frontend/components/ArViewer.tsx)）は Google `<model-viewer>` を採用。`.glb`/`.usdz` を渡すだけで Android Scene Viewer・WebXR・iOS Quick Look の出し分けを任せられる。
+  - 部屋レイアウトの試し置きデモ（[`public/ar.html`](frontend/public/ar.html)）は Three.js で **生の WebXR Device API + Hit Test API** を直接実装。床の平面性チェックと配置済み家具との **AABB 衝突判定**を自前で組み、置けない場所は赤いリングで即座に示す。
+  - AR.js（マーカー型AR）は不使用。iOS は WebXR 非対応のため AR Quick Look（`.usdz`）に自動フォールバック。
 - 詳細は [frontend/README.md](frontend/README.md)。
 
 ---
