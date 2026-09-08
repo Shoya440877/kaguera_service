@@ -8,6 +8,14 @@ KAGUERA を **月額 0 円** で公開するための手順。上から順に実
 | API (FastAPI) | Render Free | 15 分無アクセスでスリープ（復帰に約 50 秒） |
 | データベース (PostgreSQL) | Neon Free | 0.5 GB / アイドル時はゼロにスケール（復帰は 1 秒未満） |
 
+**現在の構成（2026-09-08 稼働中）**
+
+| | URL |
+| --- | --- |
+| フロント | https://kaguera.vercel.app （Vercel プロジェクト名 `kaguera`） |
+| API | https://kaguera-api-29wx.onrender.com |
+| DB | Neon `kaguera` / AWS ap-southeast-1 |
+
 リージョンは **すべて Singapore** に揃える。API から DB への問い合わせは 1 リクエストで複数回発生するため、
 「利用者との距離」より「API と DB の距離」の方が体感速度に効く。
 
@@ -18,7 +26,9 @@ KAGUERA を **月額 0 円** で公開するための手順。上から順に実
 1. https://neon.tech に GitHub でサインイン
 2. Project name: `kaguera` / Region: **AWS Asia Pacific 1 (Singapore)** → **Create project**
 3. 表示された **Connection string**（`postgresql://...` で始まる）をコピーして控える
-   - 「Pooled connection」の選択肢が出た場合、どちらでもよい（本構成は常駐サーバーなので直結で問題ない）
+   - **「Connection pooling」は OFF**（ホスト名に `-pooler` が入らない直結）にする。
+     SQLAlchemy が自前でプールを持つうえ、psycopg3 のサーバーサイド prepared statement が
+     PgBouncer の transaction モードと衝突して散発的な障害を起こすため。
 
 > このキーはチャットや GitHub に貼らない。次の STEP 2 の入力欄に直接貼る。
 
@@ -34,7 +44,7 @@ KAGUERA を **月額 0 円** で公開するための手順。上から順に実
    | Key | Value |
    | --- | --- |
    | `DATABASE_URL` | STEP 1 でコピーした Neon の接続文字列 |
-   | `CORS_ORIGINS` | `https://kaguera-service.vercel.app`（STEP 4 で確定値に直す） |
+   | `CORS_ORIGINS` | Vercel の URL。未確定なら仮値を入れ、STEP 4 で実値に直す |
 
 4. **Apply** → ビルド完了まで数分待つ
 5. 発行された URL（`https://kaguera-api-xxxx.onrender.com`）を控える
@@ -48,15 +58,17 @@ KAGUERA を **月額 0 円** で公開するための手順。上から順に実
 
 1. https://vercel.com に GitHub でサインイン
 2. **Add New → Project** → `kaguera_service` を Import
-3. **Root Directory を `frontend` に変更する**（重要。リポジトリ直下は backend と frontend の二層構造）
+3. **Application Preset を `Next.js` にし、Root Directory を `frontend` に変更する**
+   - 初期状態では Vercel が `backend/` も検出して "Services" プリセットになり、`vercel.json` を要求して
+     Deploy が押せない。API は Render にあるので、Vercel には frontend だけを載せる。
 4. Environment Variables に次を登録
 
    | Key | Value |
    | --- | --- |
    | `NEXT_PUBLIC_LAYOUT_API_BASE` | STEP 2 の API URL（末尾スラッシュなし） |
-   | `NEXT_PUBLIC_SITE_URL` | Vercel が割り当てる URL（先に `https://kaguera-service.vercel.app` を入れておく） |
-   | `ANTHROPIC_API_KEY` | 手元の `frontend/.env.local` の値 |
-   | `JINA_API_KEY` | 同上（任意。未設定でも動作する） |
+   | `NEXT_PUBLIC_SITE_URL` | Vercel が割り当てる URL（`https://<プロジェクト名>.vercel.app`） |
+   | `ANTHROPIC_API_KEY` | 任意。未設定ならローカルロジックにフォールバックする（現構成は未設定） |
+   | `JINA_API_KEY` | 任意。同上 |
 
 5. **Deploy** → 発行された URL を控える
 
@@ -64,7 +76,7 @@ KAGUERA を **月額 0 円** で公開するための手順。上から順に実
 
 ## STEP 4. URL を確定させて繋ぎ込む
 
-STEP 3 で発行された URL が `https://kaguera-service.vercel.app` と異なっていた場合のみ:
+STEP 2 で `CORS_ORIGINS` に入れた仮値と、STEP 3 で実際に発行された URL が違う場合（通常は違う）:
 
 1. **Render** → kaguera-api → Environment → `CORS_ORIGINS` を実際の Vercel URL に修正 → 自動再デプロイ
 2. **Vercel** → Settings → Environment Variables → `NEXT_PUBLIC_SITE_URL` を実際の URL に修正

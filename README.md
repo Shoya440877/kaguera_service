@@ -11,13 +11,15 @@
 
 | 対象 | URL |
 |---|---|
-| フロントエンド（Vercel） | **https://kaguera-service.vercel.app** |
-| バックエンド API（Render） | https://kaguera-api.onrender.com/docs （Swagger UI） |
+| フロントエンド（Vercel） | **https://kaguera.vercel.app** |
+| バックエンド API（Render） | https://kaguera-api-29wx.onrender.com/docs （Swagger UI） |
 
 **動作環境メモ**
 
 - **AR 機能は Android Chrome（ARCore 対応端末）推奨**。iOS は AR Quick Look に出し分けますが、iOS Safari は WebXR 非対応です。
-- バックエンドは Render の無料プランのため、しばらくアクセスがないと**初回リクエストでコールドスタート（20〜30 秒ほど）**します。保存・共有機能の初回操作が遅い場合はこのためです。
+- **初回アクセスは起動に 50 秒ほどかかることがあります。** バックエンドが Render の無料プランで、15 分アクセスがないとスリープするためです。
+  これは運用費を**月 0 円**に抑えるための意図的な選択で、常時起動が必要になれば有料プラン（$7/月）へ切り替えるだけで解消します。
+  2 回目以降は通常どおり応答します。
 
 ---
 
@@ -53,7 +55,7 @@
  │   api → service → model / schema     │   （API / service / model / schema）
  │              │                       │
  │              ▼                       │
- │   PostgreSQL 16（JSONB）             │   レイアウトを永続化
+ │   PostgreSQL 18（JSONB）             │   レイアウトを永続化
  └─────────────────────────────────────┘
 ```
 
@@ -71,9 +73,9 @@
 | AR | **Three.js `0.160.0`**（生の WebXR Device API + Hit Test API を実装、独自の AABB 衝突判定）/ **Google `<model-viewer>`**（`.glb` / `.usdz` 表示、Android Scene Viewer・WebXR と iOS Quick Look の出し分け）※いずれも CDN（unpkg）読み込みで npm 依存には含めていない |
 | AI | Anthropic Claude（`claude-sonnet-4-6`）— マルチモーダル入力 → JSON 構造化出力 |
 | バックエンド | FastAPI / Python 3.12 / Uvicorn |
-| DB / ORM | PostgreSQL 16 / SQLAlchemy 2.0（`Mapped`・`select()`）/ psycopg 3 / Pydantic v2 |
+| DB / ORM | PostgreSQL（本番 Neon 18 / ローカル 16）/ SQLAlchemy 2.0（`Mapped`・`select()`）/ psycopg 3 / Pydantic v2 |
 | テスト・品質 | pytest（FastAPI TestClient）/ ruff / mypy |
-| インフラ | Docker / docker-compose / Vercel（フロント）/ Render（API + マネージド PostgreSQL） |
+| インフラ | Docker / docker-compose / Vercel（フロント）/ Render（API・Docker）/ Neon（マネージド PostgreSQL） |
 
 ---
 
@@ -129,7 +131,8 @@ kaguera_service/
 │       └── core/              # 設定（pydantic-settings）/ DB セッション
 │
 ├── docker-compose.yml         # api + db（Postgres 16）をローカルで一括起動
-├── render.yaml                # Render Blueprint（API + マネージド DB）
+├── render.yaml                # Render Blueprint（API のみ／DB は Neon）
+├── DEPLOY.md                  # 本番デプロイ手順（Neon → Render → Vercel）
 ├── KAGUERA_BUILD_SPEC.md      # 設計書
 ├── BACKEND.md / FRONTEND.md   # 実装プロンプト（設計意図のメモ）
 └── README.md                  # このファイル
@@ -189,7 +192,8 @@ npm run lint      # ESLint（next/core-web-vitals）
 - 商品画像は Unsplash の直リンク（ポートフォリオ・非商用用途）。読み込み失敗時は背景色 + 絵文字にフォールバックします。
 - AR の衝突判定は軸並行 Bounding Box による近似で、回転配置では判定が甘くなる場合があります。
 - 保存・共有 API のスキーマ管理は起動時 `create_all`（学習用途のため Alembic は不採用。本番運用なら Alembic 導入が次のステップ）。
-- バックエンドは Render 無料プランのためコールドスタートあり（前述）。
+- インフラは全て無料枠（Vercel Hobby / Render Free / Neon Free）で構成し、運用費は**月 0 円**。
+  トレードオフとして API のコールドスタート（前述）を受け入れています。
 
 ---
 
