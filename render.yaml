@@ -1,33 +1,29 @@
-# Render Blueprint — Kaguera backend (FastAPI) + managed PostgreSQL.
+# Render Blueprint — Kaguera backend (FastAPI).
 #
 # Deploy: Render dashboard → New → Blueprint → pick this repo → Apply.
-# Render reads this file, provisions the database and the web service, and
-# wires DATABASE_URL from the database into the API automatically.
+# Render prompts for the two `sync: false` values below; paste them there.
 #
-# After the API is live, set NEXT_PUBLIC_LAYOUT_API_BASE on Vercel to the
-# API's URL (https://<service>.onrender.com, no trailing slash) and redeploy.
-
-databases:
-  - name: kaguera-db
-    databaseName: kaguera
-    user: kaguera
-    plan: free
+# The database is NOT provisioned here. Render's free Postgres expires after
+# ~30 days, which would silently break the portfolio mid-job-hunt, so the app
+# points at a Neon free database instead (no expiry, scales to zero when idle).
+# Keep Neon and this service in the same region to minimise API↔DB latency.
 
 services:
   - type: web
     name: kaguera-api
     runtime: docker
     plan: free
+    region: singapore
     dockerfilePath: ./backend/Dockerfile
     dockerContext: ./backend
     healthCheckPath: /health
     envVars:
-      # Injected from the managed database above (postgresql://...); the app
-      # rewrites the scheme to psycopg v3 at startup (see core/config.py).
+      # Neon connection string (postgresql://user:pass@host/db?sslmode=require).
+      # The app rewrites the scheme to psycopg v3 at startup (see core/config.py).
       - key: DATABASE_URL
-        fromDatabase:
-          name: kaguera-db
-          property: connectionString
-      # Browser origin allowed by CORS — the public Vercel frontend.
+        sync: false
+      # Browser origin allowed by CORS — the public Vercel URL, no trailing
+      # slash. Set once Vercel has assigned the domain; comma-separate to add
+      # more (e.g. a custom domain).
       - key: CORS_ORIGINS
-        value: https://kaguera-service.vercel.app
+        sync: false
