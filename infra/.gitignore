@@ -1,0 +1,13 @@
+# Terraform の作業ディレクトリとプロバイダバイナリ
+.terraform/
+
+# ステートは接続文字列などの機微情報を平文で含むため絶対にコミットしない
+*.tfstate
+*.tfstate.*
+crash.log
+
+# 実値の変数ファイル（example のみ追跡する）
+*.tfvars
+!*.tfvars.example
+
+# .terraform.lock.hcl は意図的に追跡する（プロバイダのバージョンを固定するため）
